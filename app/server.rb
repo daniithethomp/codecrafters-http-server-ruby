@@ -36,14 +36,18 @@ def generate_response(request)
         headers["Content-Length"] = body.length.to_s
         [200,headers,body]
     in ["GET", %r{^/files/(.*)$}]
-        if File.exists? path.split("/").last then
-            file = File.open(path.split("/").last)
+        directory = ARGV[1]
+        filename = path.split("/").last
+        file = "#{directory}/#{filename}"
+        if File.exist? file then
+            file = File.open(file)
             headers["Content-Type"] = "application/octet-stream"
             headers["Content-Length"] = file.size
             body = file.read()
             [200,headers,body]
         else
             [404, headers, []]
+        end
     else
         [404, headers, []]
     end
