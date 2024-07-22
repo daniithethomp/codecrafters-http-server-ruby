@@ -2,9 +2,6 @@ require "socket"
 
 HTTP_STATUS = {200 => "OK", 404 => "Not Found" }
 
-server = TCPServer.new("localhost", 4221)
-client_socket, client_address = server.accept
-
 def read_lines(client)
     lines = []
     while (line = client.gets) != "\r\n"
@@ -44,7 +41,6 @@ def generate_response(request)
 end
 
 def pretty_response(response)
-    puts response
     status, headers, body = response
     str = "HTTP/1.1 #{status} #{HTTP_STATUS[status]}"
     str += "\r\n"
@@ -59,10 +55,15 @@ def pretty_response(response)
     end
     str
 end
-            
-request_lines = read_lines(client_socket)
-headers = parse_request(request_lines)
-response = generate_response(headers)
-client_socket.puts pretty_response(response)
+
+server = TCPServer.new("localhost", 4221)
+loop do
+    Thread.start(server.accept) do |client_socket, client_address|               
+        request_lines = read_lines(client_socket)
+        headers = parse_request(request_lines)
+        response = generate_response(headers)
+        client_socket.puts pretty_response(response)
+    end
+end
 
 client_socket.close
