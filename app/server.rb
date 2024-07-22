@@ -35,6 +35,15 @@ def generate_response(request)
         body = request.fetch("User-Agent","")
         headers["Content-Length"] = body.length.to_s
         [200,headers,body]
+    in ["GET", %r{^/files/(.*)$}]
+        if File.exists? path.split("/").last then
+            file = File.open(path.split("/").last)
+            headers["Content-Type"] = "application/octet-stream"
+            headers["Content-Length"] = file.size
+            body = file.read()
+            [200,headers,body]
+        else
+            [404, headers, []]
     else
         [404, headers, []]
     end
