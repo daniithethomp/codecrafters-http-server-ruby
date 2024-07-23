@@ -1,13 +1,25 @@
 require "socket"
+require "optparse"
 
-HTTP_STATUS = {200 => "OK", 404 => "Not Found" }
+
+HTTP_STATUS = {200 => "OK", 404 => "Not Found", 201 => "Created" }
+
+OPTIONS = {}
+
+OptionParser.new do |opts|
+    opts.on("--directory DIRECTORY", "file directory") do |dir|
+        path = Pathname(dir)
+        raise OptionParser::InvalidArgument unless path.exist? && path.directory?
+        OPTIONS[:directory] = dir
+    end
+end.parse!
 
 def read_lines(client)
-    lines = []
+    header = []
     while (line = client.gets) != "\r\n"
-        lines << line.chomp
+        header << line.chomp
     end
-    lines
+    header
 end
 
 def parse_request(request_lines)
@@ -17,10 +29,11 @@ def parse_request(request_lines)
         key, value = header.split(":", 2).map(&:strip)
         request_hash[key] = value
     end
+    puts request_hash
     request_hash
 end
 
-def generate_response(request)
+def generate_response(request,client)
     method = request[:method]
     path = request[:path]
     headers = { "Content-Type" => "text/plain" }
@@ -36,9 +49,8 @@ def generate_response(request)
         headers["Content-Length"] = body.length.to_s
         [200,headers,body]
     in ["GET", %r{^/files/(.*)$}]
-        directory = ARGV[1]
         filename = path.split("/").last
-        file = "#{directory}/#{filename}"
+        file = File.join(OPTIONS[:directory],filename)
         if File.exist? file then
             file = File.open(file)
             headers["Content-Type"] = "application/octet-stream"
@@ -48,6 +60,14 @@ def generate_response(request)
         else
             [404, headers, []]
         end
+    in ["POST",%r{^/files/(.*)$}]
+        filename = path.split("/").last
+        file = File.join(OPTIONS[:directory], filename)
+        length = request["Content-Length"]
+        body = client.read(length.to_i)
+        File.open(file,'w')
+        File.write(file,body)
+        [201, headers, []]
     else
         [404, headers, []]
     end
@@ -72,9 +92,9 @@ end
 server = TCPServer.new("localhost", 4221)
 loop do
     Thread.start(server.accept) do |client_socket, client_address|               
-        request_lines = read_lines(client_socket)
-        headers = parse_request(request_lines)
-        response = generate_response(headers)
+        header_lines = read_lines(client_socket)
+        headers = parse_request(header_lines)
+        response = generate_response(headers,client_socket)
         client_socket.puts pretty_response(response)
     end
 end
