@@ -39,8 +39,8 @@ def generate_response(request,client)
     method = request[:method]
     path = request[:path]
     headers = { "Content-Type" => "text/plain" }
-    if request.include? "Accept-Encoding" and ACCEPTED_ENCODING.include? request["Accept-Encoding"] then
-        headers["Content-Encoding"] = request["Accept-Encoding"]
+    if request.include? "Accept-Encoding" and ACCEPTED_ENCODING.intersect? request["Accept-Encoding"].split(", ") then
+        headers["Content-Encoding"] = (ACCEPTED_ENCODING & request["Accept-Encoding"].split(", ")).first
     end
     case[method, path]
     in ["GET", "/"]
