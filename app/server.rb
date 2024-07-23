@@ -6,6 +6,8 @@ HTTP_STATUS = {200 => "OK", 404 => "Not Found", 201 => "Created" }
 
 OPTIONS = {}
 
+ACCEPTED_ENCODING = ["gzip"]
+
 OptionParser.new do |opts|
     opts.on("--directory DIRECTORY", "file directory") do |dir|
         path = Pathname(dir)
@@ -37,6 +39,9 @@ def generate_response(request,client)
     method = request[:method]
     path = request[:path]
     headers = { "Content-Type" => "text/plain" }
+    if request.include? "Accept-Encoding" and ACCEPTED_ENCODING.include? request["Accept-Encoding"] then
+        headers["Content-Encoding"] = request["Accept-Encoding"]
+    end
     case[method, path]
     in ["GET", "/"]
         [200, headers, []]
