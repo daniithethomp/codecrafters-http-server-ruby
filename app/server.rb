@@ -1,5 +1,6 @@
 require "socket"
 require "optparse"
+require "zlib"
 
 
 HTTP_STATUS = {200 => "OK", 404 => "Not Found", 201 => "Created" }
@@ -31,7 +32,6 @@ def parse_request(request_lines)
         key, value = header.split(":", 2).map(&:strip)
         request_hash[key] = value
     end
-    puts request_hash
     request_hash
 end
 
@@ -47,7 +47,13 @@ def generate_response(request,client)
         [200, headers, []]
     in ["GET",%r{^/echo/(.*)$}]
         echo_message = path.split("/").last
-        headers["Content-Length"] = echo_message.length.to_s
+        if headers["Content-Encoding"] then
+            echo_message = Zlib.gzip(echo_message)
+            puts echo_message
+            headers["Content-Length"] = echo_message.bytesize.to_s
+        else
+            headers["Content-Length"] = echo_message.length.to_s
+        end
         [200, headers, echo_message]
     in ["GET", "/user-agent"]
         body = request.fetch("User-Agent","")
